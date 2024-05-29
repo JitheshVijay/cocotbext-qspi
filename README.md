@@ -15,6 +15,7 @@ cocotbext/
         __init__.py
         qspi_bus.py
         qspi_master.py
+        qspi_slave.py
         qspi_config.py
 ```
 
@@ -74,7 +75,7 @@ class QspiConfig:
         self.cs_active_low = cs_active_low  # Chip select active low flag
         self.quad_mode = quad_mode    # Quad mode flag (default True)
 ```
-##### QspiMaster
+##### QspiMaster and QspiSlave
 This class will handle the QSPI operations.
 
 qspi_master.py
@@ -108,17 +109,86 @@ class QspiMaster:
         await Timer(1, units='ns')  # Wait for 1 ns
 
     async def _write_byte(self, byte):
-        for i in range(8):
-            self.bus.io0.value = (byte >> (7 - i)) & 1  # Set data line
-            await RisingEdge(self.bus.sclk)  # Wait for clock edge
-        await Timer(1, units='ns')  # Wait for 1 ns
+        for i in range(2):  # Two cycles for 8 bits, as each cycle writes 4 bits
+            nibble = (byte >> (4 * (1 - i))) & 0xF  # Extract 4 bits (nibble)
+            self.bus.io0.value = (nibble >> 0) & 1  # Set the value for io0
+            self.bus.io1.value = (nibble >> 1) & 1  # Set the value for io1
+            self.bus.io2.value = (nibble >> 2) & 1  # Set the value for io2
+            self.bus.io3.value = (nibble >> 3) & 1  # Set the value for io3
+            await RisingEdge(self.bus.sclk)
+        await Timer(1, units='ns')
 
     async def _read_byte(self):
         byte = 0
-        for i in range(8):
-            await RisingEdge(self.bus.sclk)  # Wait for clock edge
-            byte = (byte << 1) | int(self.bus.io0.value)  # Read data line
-        return byte  # Return the read byte
+        for i in range(2):  # Two cycles for 8 bits, as each cycle reads 4 bits
+            await RisingEdge(self.bus.sclk)
+            # Read 4 bits from the QSPI lines and combine them into a nibble
+            nibble = (
+                (int(self.bus.io3.value) << 3) |
+                (int(self.bus.io2.value) << 2) |
+                (int(self.bus.io1.value) << 1) |
+                int(self.bus.io0.value)
+            )
+            byte = (byte << 4) | nibble  # Combine the nibble into the byte
+        return byte
+
+```
+qspi_slave.py
+```python
+import cocotb
+from cocotb.triggers import RisingEdge, FallingEdge
+from cocotb.handle import SimHandle
+
+class QspiSlave:
+    def __init__(self, bus: QspiBus, memory_size: int = 256):
+        # Initialize QSPI bus and memory
+        self.bus = bus
+        self.memory = [0xFF] * memory_size  # Initialize memory with all bytes set to 0xFF
+
+    async def run(self):
+        # Main loop to handle transactions
+        while True:
+            await FallingEdge(self.bus.cs)
+            while not self.bus.cs.value:
+                await self._handle_transaction()
+
+    async def _handle_transaction(self):
+        # Handle incoming transactions based on commands
+        command = await self._read_byte()
+        if command == 0x02:  # Write command
+            address = await self._read_address()
+            data = await self._read_byte()
+            self.memory[address] = data
+        elif command == 0x03:  # Read command
+            address = await self._read_address()
+            await self._write_byte(self.memory[address])
+        elif command == 0x20:  # Erase command
+            address = await self._read_address()
+            self.memory[address] = 0xFF
+
+    async def _write_byte(self, byte):
+        for i in range(2):  # Two cycles for 8 bits, as each cycle writes 4 bits
+            nibble = (byte >> (4 * (1 - i))) & 0xF  # Extract 4 bits (nibble)
+            self.bus.io0.value = (nibble >> 0) & 1  # Set the value for io0
+            self.bus.io1.value = (nibble >> 1) & 1  # Set the value for io1
+            self.bus.io2.value = (nibble >> 2) & 1  # Set the value for io2
+            self.bus.io3.value = (nibble >> 3) & 1  # Set the value for io3
+            await RisingEdge(self.bus.sclk)
+        await Timer(1, units='ns')
+
+    async def _read_byte(self):
+        byte = 0
+        for i in range(2):  # Two cycles for 8 bits, as each cycle reads 4 bits
+            await RisingEdge(self.bus.sclk)
+            # Read 4 bits from the QSPI lines and combine them into a nibble
+            nibble = (
+                (int(self.bus.io3.value) << 3) |
+                (int(self.bus.io2.value) << 2) |
+                (int(self.bus.io1.value) << 1) |
+                int(self.bus.io0.value)
+            )
+            byte = (byte << 4) | nibble  # Combine the nibble into the byte
+        return byte
 
 ```
 ### QSPI Flash Memory Interface Documentation
@@ -205,7 +275,7 @@ The `QSPIFlash` class encapsulates the functionality needed to interact with the
 import cocotb
 from cocotb.triggers import Timer
 from cocotb.clock import Clock
-from cocotbext.qspi import QspiBus, QspiMaster, QspiConfig
+from cocotbext.qspi import QspiBus, QspiMaster, QspiSlave, QspiConfig
 
 class QSPIFlash:
     def __init__(self, dut):
@@ -354,7 +424,10 @@ module qspi_flash_test;
         $dumpvars(0, qspi_flash_test);
         
         qspi_sclk = 0;
-        qspi_mosi = 0;
+        qspi_io0 = 0,
+        qspi_io1 = 0,
+        qspi_io2 = 0,
+        qspi_io3 = 0,
         qspi_cs = 1;
         reset_n = 0;
         clk = 0;
