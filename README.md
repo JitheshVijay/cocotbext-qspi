@@ -1,6 +1,6 @@
-# SPI Interface for Cocotb
+# QSPI Interface for Cocotb
 
-SPI simulation framework for cocotb.
+QSPI simulation framework for cocotb.
 
 ## Documentation
 To properly handle QSPI (Quad SPI), which involves four data lines (IO0, IO1, IO2, IO3), we need to update the module to include these lines and adjust the communication logic accordingly. Below is the revised Verilog module and testbench documentation to support QSPI with four data lines.
