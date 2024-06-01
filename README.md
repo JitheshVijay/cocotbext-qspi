@@ -1,7 +1,7 @@
 # QSPI Interface for Cocotb
 
-QSPI simulation framework for cocotb.
-
+The Quad Serial Peripheral Interface (QSPI) is an advanced SPI protocol variant that utilizes four data lines to significantly increase data throughput, making it ideal for high-speed flash memory and other peripherals. Cocotb (Coroutine-based Co-simulation Testbench) is a powerful Python-based framework for hardware verification. Integrating QSPI into Cocotb allows developers to efficiently simulate and test high-speed communication interfaces, ensuring their hardware designs meet performance and functionality requirements.
+This documentation provides a detailed guide on implementing and verifying QSPI interfaces using Cocotb, covering the essential components such as QSPI configuration, master and slave modules, and example testbenches to validate the functionality of QSPI-enabled devices.
 ## Documentation
 To properly handle QSPI (Quad SPI), which involves four data lines (IO0, IO1, IO2, IO3), we need to update the module to include these lines and adjust the communication logic accordingly. Below is the revised Verilog module and testbench documentation to support QSPI with four data lines.
 
