@@ -15,7 +15,7 @@ TOPLEVEL = $(DUT)
 MODULE   = test_qspi_flash
 
 # Verilog source files
-VERILOG_SOURCES = $(shell pwd)/verilog/qspi_flash.v $(shell pwd)/verilog/qspi_flash_test.v
+VERILOG_SOURCES = ../verilog/qspi_flash.v ../verilog/qspi_flash_test.v
 
 # Enable waveform dumping
 ifeq ($(SIM), icarus)
@@ -47,4 +47,3 @@ clean::
 	@rm -rf sim_build
 
 .PHONY: all sim clean
-
