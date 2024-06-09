@@ -1,6 +1,6 @@
-from .ospi_bus import OspiBus
-from .ospi_master import OspiMaster
-from .ospi_slave import OspiSlave
-from .ospi_config import OspiConfig
+from .qspi_bus import QspiBus
+from .qspi_master import QspiMaster
+from .qspi_slave import QspiSlave
+from .qspi_config import QspiConfig
 
-__all__ = ["OspiBus", "OspiMaster", "OspiSlave", "OspiConfig"]
+__all__ = ["QspiBus", "QspiMaster", "QspiSlave", "QspiConfig"]
