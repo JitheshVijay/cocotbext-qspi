@@ -1,8 +1,8 @@
 module qspi_flash_test;
     reg QSPI_CLK;             // QSPI serial clock
     wire [3:0] QSPI_IO;       // QSPI data lines (inout needs to be wire)
-    reg QSPI_CS_b;            // QSPI chip select
-    reg QSPI_RST_b;           // QSPI reset
+    reg QSPI_CS;            // QSPI chip select
+    reg QSPI_RST;           // QSPI reset
     reg reset_n;              // Active-low reset signal
     reg clk;                  // Clock signal
     reg write_enable;         // Write enable signal
@@ -48,20 +48,8 @@ module qspi_flash_test;
 
         // Reset sequence
         #10 reset_n = 1;
-        QSPI_RST_b = 1;
+        QSPI_RST = 1;
 
-        // Test sequence example
-        #20 write_enable = 1;
-        data_in = 4'hA;
-        address = 8'h00;
-        #10 write_enable = 0;
-
-        #20 read_enable = 1;
-        address = 8'h00;
-        #10 read_enable = 0;
-
-        // Wait some time and finish
-        #100 $finish;
     end
 
     always #5 clk = ~clk;
