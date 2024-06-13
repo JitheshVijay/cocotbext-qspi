@@ -14,7 +14,7 @@ class QspiBus:
     @classmethod
     def from_prefix(cls, entity: SimHandle, prefix: str):
         # Retrieve signals based on prefix
-        sclk = getattr(entity, f"{prefix}_sclk")
+        sclk = getattr(entity, f"{prefix}_CLK")
         cs = getattr(entity, f"{prefix}_cs")
         io0 = getattr(entity, f"{prefix}_io0")
         io1 = getattr(entity, f"{prefix}_io1")
