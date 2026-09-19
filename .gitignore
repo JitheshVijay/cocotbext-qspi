@@ -23,3 +23,7 @@ docs/waveforms/*.png
 docs/waveforms/capture.vcd
 docs/waveforms/sim_build_waves/
 docs/waveforms/vcd_dump.v
+
+# generated from README.md at docs build time
+docs/readme.md
+docs/_build/
