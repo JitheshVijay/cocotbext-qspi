@@ -11,11 +11,12 @@ COCOTB_HDL_TIMEPRECISION = 1ps
 
 # Name of the top-level module and the test module
 DUT      = qspi_flash
-TOPLEVEL = $(DUT)
+TOPLEVEL = qspi_flash_test
 MODULE   = test_qspi_flash
 
 # Verilog source files
-VERILOG_SOURCES = ../verilog/qspi_flash.v ../verilog/qspi_flash_test.v
+VERILOG_SOURCES = $(shell pwd)/../verilog/qspi_flash.v
+VERILOG_SOURCES += $(shell pwd)/../verilog/qspi_flash_test.v
 
 # Enable waveform dumping
 ifeq ($(SIM), icarus)
@@ -26,6 +27,13 @@ ifeq ($(SIM), icarus)
 		COMPILE_ARGS += -s iverilog_dump
 	endif
 endif
+
+# Make the repo root (for the cocotbext package) and this directory (for the
+# test module) importable, so `make -C tests` works from a bare checkout
+# without the caller having to set PYTHONPATH.
+export PYTHONPATH := $(shell pwd)/..:$(shell pwd):$(PYTHONPATH)
+export COCOTB_HDL_TIMEUNIT
+export COCOTB_HDL_TIMEPRECISION
 
 # Include the cocotb makefile
 include $(shell cocotb-config --makefiles)/Makefile.sim

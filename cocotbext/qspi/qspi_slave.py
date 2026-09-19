@@ -1,22 +1,24 @@
-import cocotb
-from cocotb.triggers import Timer, RisingEdge
+"""Passive monitor for the QSPI bus."""
+
+from cocotb.triggers import RisingEdge
+
 
 class QspiSlave:
-    def __init__(self, dut, config):
-        self.dut = dut
+    """Observes nibbles on QSPI_IO without driving anything.
+
+    Useful for checking what a master put on the wire; the flash model in
+    ``verilog/qspi_flash.v`` is the active slave.
+    """
+
+    def __init__(self, bus, config=None):
+        self.bus = bus
         self.config = config
 
-    async def read(self):
-        byte = 0
-        for i in range(2):  # 2 iterations, 4 bits each time
-            await RisingEdge(self.dut.QSPI_CLK)
-            for j in range(4):
-                byte = (byte << 1) | int(self.dut.QSPI_IO[j].value)
-        return byte
+    async def capture_nibble(self) -> int:
+        await RisingEdge(self.bus.clk)
+        return int(self.bus.io.value)
 
-    async def write(self, data):
-        for i in range(2):  # 2 iterations, 4 bits each time
-            for j in range(4):
-                self.dut.QSPI_IO[j].value = (data >> (7 - 4*i - j)) & 1
-            await RisingEdge(self.dut.QSPI_CLK)
-        await Timer(1, units='ns')
+    async def capture_byte(self) -> int:
+        high = await self.capture_nibble()
+        low = await self.capture_nibble()
+        return ((high & 0xF) << 4) | (low & 0xF)

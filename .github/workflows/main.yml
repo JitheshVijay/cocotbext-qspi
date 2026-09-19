@@ -8,28 +8,18 @@ jobs:
 
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v2
-
-    - name: Install dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y build-essential bison flex libreadline-dev gawk tcl-dev libffi-dev git \
-                                graphviz xdot pkg-config python3 python3-pip libboost-system-dev \
-                                libboost-python-dev libboost-context-dev autoconf gperf
+      uses: actions/checkout@v4
 
     - name: Install Icarus Verilog
       run: |
-        git clone https://github.com/steveicarus/iverilog.git
-        cd iverilog
-        sh autoconf.sh
-        ./configure
-        make
-        sudo make install
+        sudo apt-get update
+        sudo apt-get install -y iverilog
+
 
     - name: Set up Python
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v5
       with:
-        python-version: '3.x'
+        python-version: '3.12'
 
     - name: Install Python dependencies
       run: pip install cocotb

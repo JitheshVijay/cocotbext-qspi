@@ -1,23 +1,34 @@
-import cocotb
-from cocotb.handle import SimHandle
+"""Signal bundle for a quad-SPI bus."""
+
+from cocotb.handle import HierarchyObject
+
 
 class QspiBus:
-    def __init__(self, sclk, cs, io0, io1, io2, io3):
-        self.sclk = sclk    # Serial clock signal
-        self.cs = cs        # Chip select signal
-        self.io0 = io0      # Data line 0
-        self.io1 = io1      # Data line 1
-        self.io2 = io2      # Data line 2
-        self.io3 = io3      # Data line 3
-        
+    """The wires a QSPI master drives, grouped together.
+
+    ``io_out``/``io_oe`` are the master's half of the bidirectional data bus:
+    a simulator cannot have the testbench drive an ``inout`` net directly, so
+    the top level splits it into a value and an output enable. Dropping
+    ``io_oe`` releases the bus so the slave can drive read data onto it.
+    """
+
+    def __init__(self, clk, cs, io, io_out, io_oe):
+        self.clk = clk        # QSPI_CLK
+        self.cs = cs          # QSPI_CS, active low
+        self.io = io          # QSPI_IO, read back for slave-driven data
+        self.io_out = io_out  # master's driven value
+        self.io_oe = io_oe    # master's output enable
 
     @classmethod
-    def from_prefix(cls, entity: SimHandle, prefix: str):
-        # Retrieve signals based on prefix
-        sclk = getattr(entity, f"{prefix}_CLK")
-        cs = getattr(entity, f"{prefix}_cs")
-        io0 = getattr(entity, f"{prefix}_io0")
-        io1 = getattr(entity, f"{prefix}_io1")
-        io2 = getattr(entity, f"{prefix}_io2")
-        io3 = getattr(entity, f"{prefix}_io3")
-        return cls(sclk, cs, io0, io1, io2, io3)
+    def from_entity(cls, entity: HierarchyObject, prefix: str = "QSPI"):
+        """Pick the bus signals out of ``entity`` by name."""
+        return cls(
+            clk=getattr(entity, f"{prefix}_CLK"),
+            cs=getattr(entity, f"{prefix}_CS"),
+            io=getattr(entity, f"{prefix}_IO"),
+            io_out=entity.io_out,
+            io_oe=entity.io_oe,
+        )
+
+    # Kept for callers written against the previous name.
+    from_prefix = from_entity

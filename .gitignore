@@ -1,0 +1,14 @@
+# cocotb / Icarus Verilog simulation artifacts
+sim_build/
+results.xml
+iverilog_dump.v
+*.vcd
+*.fst
+
+# Python
+__pycache__/
+*.pyc
+*.egg-info/
+dist/
+build/
+.pytest_cache/
