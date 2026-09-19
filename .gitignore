@@ -18,8 +18,8 @@ build/
 .pytest_cache/
 .venv/
 
-# Rendered only for local inspection; the SVGs are what ship
-docs/waveforms/*.png
+# PNGs are committed: PyPI proxies README images through camo, which
+# commonly refuses image/svg+xml, so the rendered page needs them.
 docs/waveforms/capture.vcd
 docs/waveforms/sim_build_waves/
 docs/waveforms/vcd_dump.v

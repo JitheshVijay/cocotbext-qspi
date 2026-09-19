@@ -52,11 +52,19 @@ def _sync_readme(app):
     PyPI. Included from inside docs/, those paths do not resolve -- so
     rewrite them here rather than keeping a second copy that drifts.
     """
+    import re
     from pathlib import Path
 
     here = Path(__file__).parent
     text = (here.parent / "README.md").read_text()
-    text = text.replace("](docs/waveforms/", "](waveforms/")
+    # The README points at absolute GitHub URLs so PyPI can render the
+    # images; locally we have the same files, so use those and keep the
+    # docs build self-contained.
+    text = re.sub(
+        r"\]\(https://raw\.githubusercontent\.com/[^)]*?/docs/waveforms/([a-z-]+)\.png\)",
+        r"](waveforms/\1.png)",
+        text,
+    )
     (here / "readme.md").write_text(
         "<!-- Generated from ../README.md by conf.py; do not edit. -->\n\n"
         + text

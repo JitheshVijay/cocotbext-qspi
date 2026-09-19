@@ -81,17 +81,17 @@ A quad I/O read. The opcode goes out one bit per clock on a single lane; only
 then does the bus widen to four lanes for the address and data. Note the
 eight dummy cycles, where neither side drives while the bus turns around:
 
-![Fast read quad I/O](docs/waveforms/quad-read.svg)
+![Fast read quad I/O](https://raw.githubusercontent.com/JitheshVijay/cocotbext-qspi/v0.2.0/docs/waveforms/quad-read.png)
 
 The same byte read three ways. This is the whole point of the wide modes —
 40 clocks single-lane, 36 dual, 26 quad, for one byte at the same address:
 
-![One byte, three widths](docs/waveforms/width-comparison.svg)
+![One byte, three widths](https://raw.githubusercontent.com/JitheshVijay/cocotbext-qspi/v0.2.0/docs/waveforms/width-comparison.png)
 
 A status read while a program is in flight. The device answers `0x01` — WIP
 set — which is what `wait_ready()` polls for:
 
-![Read status](docs/waveforms/read-status.svg)
+![Read status](https://raw.githubusercontent.com/JitheshVijay/cocotbext-qspi/v0.2.0/docs/waveforms/read-status.png)
 
 To regenerate them:
 
@@ -174,8 +174,8 @@ the closed loop had been happily agreeing with itself.
 | `cocotbext/qspi/qspi_flash.py` | `QspiFlash` — JEDEC command set, status polling |
 | `cocotbext/qspi/qspi_master.py` | `QspiMaster` — byte transfers at 1/2/4 lanes |
 | `cocotbext/qspi/qspi_bus.py` | `QspiBus` — signal bundle |
-| `verilog/qspi_flash.v` | NOR flash model: WEL, WIP, page program, sector erase |
-| `verilog/qspi_flash_test.v` | cocotb top level |
+| `cocotbext/qspi/verilog/qspi_flash.v` | NOR flash model: WEL, WIP, page program, sector erase |
+| `cocotbext/qspi/verilog/qspi_flash_test.v` | cocotb top level |
 | `tests/reference/` | third-party model for interop (ISC, see its README) |
 
 ## Licence

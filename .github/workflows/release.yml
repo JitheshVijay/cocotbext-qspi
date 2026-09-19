@@ -48,6 +48,24 @@ jobs:
             fi
           done
 
+
+      # README images must be absolute: relative paths 404 on PyPI, which is
+      # the first thing anyone sees. Caught once already.
+      - name: Check README images are absolute
+        run: |
+          python -m pip install "readme_renderer[md]"
+          python - <<'EOF'
+          import re, sys
+          import readme_renderer.markdown as md
+          html = md.render(open("README.md").read())
+          bad = [s for s in re.findall(r'<img[^>]*src="([^"]+)"', html)
+                 if not s.startswith("https://")]
+          if bad:
+              print("relative README image(s):", *bad, sep="\n  ")
+              sys.exit(1)
+          print("all README images absolute")
+          EOF
+
       - uses: actions/upload-artifact@v4
         with:
           name: dist
