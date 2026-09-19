@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cocotbext-qspi"
+version = "0.2.0"
+description = "QSPI flash verification for cocotb, with a JEDEC flash model"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.8"
+authors = [{name = "Jithesh Vijay", email = "jitheshvijay67@gmail.com"}]
+keywords = ["cocotb", "qspi", "spi", "flash", "verification", "hdl", "rtl"]
+dependencies = ["cocotb>=2.0"]
+
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Framework :: cocotb",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Topic :: Software Development :: Testing",
+]
+
+[project.urls]
+Homepage = "https://github.com/JitheshVijay/cocotbext-qspi"
+Issues = "https://github.com/JitheshVijay/cocotbext-qspi/issues"
+
+# PEP 420 native namespace package: cocotbext/ deliberately has no
+# __init__.py, so this distribution can be installed alongside
+# cocotbext-axi, cocotbext-spi and the rest without colliding on the
+# shared cocotbext package.
+[tool.setuptools.packages.find]
+include = ["cocotbext.*"]
+namespaces = true

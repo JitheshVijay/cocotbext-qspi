@@ -1,0 +1,37 @@
+name: CI
+
+on: [push, pull_request]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ['3.9', '3.11', '3.12']
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Icarus Verilog
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y iverilog
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install .
+
+      # Our own JEDEC flash model.
+      - name: Device tests
+        run: make -C tests
+
+      # An independently written model (PicoSoC spiflash.v), which is what
+      # shows the driver speaks real QSPI rather than agreeing with itself.
+      - name: Interop tests
+        run: make -C tests -f Makefile.interop

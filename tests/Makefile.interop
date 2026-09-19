@@ -1,0 +1,34 @@
+# Interop against PicoSoC's spiflash.v -- an independently written model.
+#
+#   make -f Makefile.interop
+
+TOPLEVEL_LANG ?= verilog
+SIM ?= icarus
+
+COCOTB_HDL_TIMEUNIT = 1ns
+COCOTB_HDL_TIMEPRECISION = 1ps
+
+TOPLEVEL = tb_spiflash
+MODULE   = test_interop
+
+VERILOG_SOURCES  = $(shell pwd)/reference/spiflash.v
+VERILOG_SOURCES += $(shell pwd)/reference/tb_spiflash.v
+
+# spiflash.v loads its contents with $readmemh from +firmware=<file>.
+# spiflash.v defaults to reading "firmware.hex" from the working
+# directory; a plusarg path gets mangled by $value$plusargs here.
+COCOTB_RESULTS_FILE = results.xml
+
+export PYTHONPATH := $(shell pwd)/..:$(shell pwd):$(PYTHONPATH)
+export COCOTB_HDL_TIMEUNIT
+export COCOTB_HDL_TIMEPRECISION
+
+include $(shell cocotb-config --makefiles)/Makefile.sim
+
+# The model $readmemh's "firmware.hex" from the working directory.
+sim: firmware.hex
+firmware.hex: reference/firmware.hex
+	cp $< $@
+
+clean::
+	@rm -rf sim_build results.xml firmware.hex

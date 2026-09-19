@@ -1,28 +1,33 @@
 // Top level for the cocotb testbench.
 //
-// cocotb acts as the QSPI master. It cannot drive an inout net directly, so
-// the master's side of QSPI_IO is split into a value (io_out) and an output
-// enable (io_oe); releasing io_oe hands the bus to the flash for read data.
+// cocotb cannot drive an inout net directly, so the master's half of the bus
+// is split into a value (io_out) and a per-lane output enable (io_oe).
+// Per-lane matters: in single-lane mode the master drives io0 while the
+// device answers on io1, so one bus-wide enable would collide.
+//
+// csb is deliberately uninitialised -- the model frames on chip-select
+// edges, and an initialiser here would race cocotb's first write at time 0.
 
 `timescale 1ns/1ps
 
 module qspi_flash_test;
 
-    reg        QSPI_CLK = 1'b0;
-    reg        QSPI_CS  = 1'b1;   // active low, starts deasserted
-    reg        reset_n  = 1'b0;
-    reg [3:0]  io_out   = 4'h0;
-    reg        io_oe    = 1'b0;
+    reg       csb;
+    reg       clk = 1'b0;
+    reg [3:0] io_out;
+    reg [3:0] io_oe;
 
-    wire [3:0] QSPI_IO;
+    wire [3:0] io;
 
-    assign QSPI_IO = io_oe ? io_out : 4'bzzzz;
+    assign io[0] = io_oe[0] ? io_out[0] : 1'bz;
+    assign io[1] = io_oe[1] ? io_out[1] : 1'bz;
+    assign io[2] = io_oe[2] ? io_out[2] : 1'bz;
+    assign io[3] = io_oe[3] ? io_out[3] : 1'bz;
 
     qspi_flash dut (
-        .QSPI_CLK (QSPI_CLK),
-        .QSPI_CS  (QSPI_CS),
-        .QSPI_IO  (QSPI_IO),
-        .reset_n  (reset_n)
+        .clk (clk),
+        .csb (csb),
+        .io  (io)
     );
 
 endmodule

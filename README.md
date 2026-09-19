@@ -1,85 +1,133 @@
 # cocotbext-qspi
 
-A [cocotb](https://www.cocotb.org/) extension for driving quad-SPI flash
-devices, plus a synthesisable QSPI flash slave model to test against.
+QSPI flash verification for [cocotb](https://www.cocotb.org/): a bus driver,
+a device-level API over the JEDEC command set, and a NOR flash model to test
+against.
 
-Requires **cocotb 2.0+** and a simulator; the tests run on Icarus Verilog.
+Requires **cocotb 2.0+**. Tests run on Icarus Verilog.
 
-## Protocol
+```
+pip install cocotbext-qspi
+```
 
-A transaction is framed by `QSPI_CS` (active low). Four bits move per rising
-edge of `QSPI_CLK` on `QSPI_IO[3:0]`, most-significant nibble first, so each
-byte takes two clocks.
+## Why another SPI extension
 
-| Operation | Sequence | Clocks |
-|---|---|---|
-| Page program | `0x02` \| address \| data | 6 |
-| Read | `0x03` \| address \| dummy \| *data* | 7 |
-| Sector erase | `0x20` \| address | 4 |
-
-The slave drives `QSPI_IO` only during a read's data phase. The dummy clock
-after the address gives the master a full cycle to release the bus before the
-slave starts driving, so the two never contend — real QSPI parts insert dummy
-cycles for the same reason.
-
-Memory powers up erased (`0xFF`).
+[`cocotbext-spi`](https://github.com/schang412/cocotbext-spi) covers
+single-lane SPI. This one covers flash specifically: dual and quad I/O
+reads, the write-enable latch, status polling, page program and sector
+erase — and it targets cocotb 2.x.
 
 ## Usage
 
 ```python
 import cocotb
 from cocotb.clock import Clock
-from cocotbext.qspi import QspiFlash
+from cocotbext.qspi import QspiFlash, CMD_QIOR4
 
 @cocotb.test()
-async def test_round_trip(dut):
-    cocotb.start_soon(Clock(dut.QSPI_CLK, 20, units="ns").start())
+async def test_flash(dut):
+    cocotb.start_soon(Clock(dut.clk, 20, unit="ns").start())
 
     flash = QspiFlash(dut)
     await flash.initialize()
 
-    await flash.write(0x01, 0xA5)
-    assert await flash.read(0x01) == 0xA5
+    assert await flash.read_id() == [0xEF, 0x40, 0x18]
 
-    await flash.erase(0x01)
-    assert await flash.read(0x01) == 0xFF
+    # program() sets WEL, then polls the status register until WIP clears.
+    await flash.program(0x1000, [0xDE, 0xAD, 0xBE, 0xEF])
+
+    assert await flash.read(0x1000, 4) == [0xDE, 0xAD, 0xBE, 0xEF]
+    assert await flash.read(0x1000, 4, opcode=CMD_QIOR4) == [0xDE, 0xAD, 0xBE, 0xEF]
+
+    await flash.erase_sector(0x1000)
+    assert await flash.read(0x1000, 4) == [0xFF] * 4
 ```
+
+## The protocol, and two things that catch people out
+
+SPI mode 0: the master launches data while the clock is low, the device
+samples it on the rising edge, and vice versa.
+
+**The opcode is always single-lane.** Only the address, mode byte and data
+widen. A quad I/O read is *not* "everything on four lanes" — it is one
+single-lane command byte, then four-lane address and data. Getting this
+wrong is the most common reason a driver talks to nothing.
+
+**Programming only clears bits.** NOR flash needs an erase to set a bit back
+to 1. Programming `0x0F` over `0xF0` gives `0x00`, not `0x0F`.
+
+### Commands
+
+| Opcode | Name | Address | Data |
+|---|---|---|---|
+| `0x06` | Write enable | — | — |
+| `0x04` | Write disable | — | — |
+| `0x05` | Read status | — | 1 lane, repeats |
+| `0x9F` | JEDEC id | — | 1 lane, 3 bytes |
+| `0x03` | Read | 1 lane | 1 lane |
+| `0xBB` | Fast read dual I/O | 2 lanes | 2 lanes, after mode byte + dummy |
+| `0xEB` | Fast read quad I/O | 4 lanes | 4 lanes, after mode byte + dummy |
+| `0x02` | Page program | 1 lane | 1 lane; needs WEL, sets WIP |
+| `0x20` | Sector erase (4 KB) | 1 lane | — ; needs WEL, sets WIP |
+
+Status register: bit 0 `WIP` (write in progress), bit 1 `WEL` (write enable
+latch). `wait_ready()` polls it rather than assuming a fixed delay, which is
+what a real controller must do.
 
 ## Bus signals
 
-`QspiBus.from_entity(dut)` picks up `QSPI_CLK`, `QSPI_CS` and `QSPI_IO`, plus
-`io_out` and `io_oe`.
+`QspiBus.from_entity(dut)` picks up `clk`, `csb` and `io`, plus `io_out` and
+`io_oe`.
 
-A simulator will not let the testbench drive an `inout` net directly, so the
-top level splits the master's half of `QSPI_IO` into a driven value (`io_out`)
-and an output enable (`io_oe`); dropping `io_oe` hands the bus to the flash:
+A simulator will not let a testbench drive an `inout` net, so the top level
+splits the master's half into a value and a **per-lane** output enable:
 
 ```verilog
-wire [3:0] QSPI_IO;
-assign QSPI_IO = io_oe ? io_out : 4'bzzzz;
+wire [3:0] io;
+assign io[0] = io_oe[0] ? io_out[0] : 1'bz;
+assign io[1] = io_oe[1] ? io_out[1] : 1'bz;
+assign io[2] = io_oe[2] ? io_out[2] : 1'bz;
+assign io[3] = io_oe[3] ? io_out[3] : 1'bz;
 ```
 
-See `verilog/qspi_flash_test.v`.
+Per-lane, not bus-wide: in single-lane mode the master drives `io0` while
+the device answers on `io1`.
+
+Note also that `csb` is left uninitialised in `qspi_flash_test.v`. The model
+frames transactions on chip-select edges, and an initialiser there races
+cocotb's first write at time 0 — the edge is lost and the device never
+starts. `initialize()` drives the sequence explicitly.
+
+## Testing
+
+Two suites, and the split matters:
+
+```
+make -C tests                      # against our own JEDEC model: 11 tests
+make -C tests -f Makefile.interop  # against PicoSoC's spiflash.v: 5 tests
+```
+
+The interop suite drives
+[`spiflash.v`](https://github.com/YosysHQ/picorv32) — a model this project
+did not write — and checks the bytes against known `$readmemh` content.
+
+That distinction earned its keep. Testing only against our own model proves
+the driver and the model agree; it does not prove either is right. Driving
+somebody else's model immediately found that the master was dropping the
+first bit of every byte — our model had the same off-by-one assumption, so
+the closed loop had been happily agreeing with itself.
 
 ## Layout
 
 | Path | Contents |
 |---|---|
-| `cocotbext/qspi/qspi_flash.py` | `QspiFlash` — write / read / erase |
-| `cocotbext/qspi/qspi_master.py` | `QspiMaster` — nibble and byte level bus driving |
-| `cocotbext/qspi/qspi_slave.py` | `QspiSlave` — passive bus monitor |
+| `cocotbext/qspi/qspi_flash.py` | `QspiFlash` — JEDEC command set, status polling |
+| `cocotbext/qspi/qspi_master.py` | `QspiMaster` — byte transfers at 1/2/4 lanes |
 | `cocotbext/qspi/qspi_bus.py` | `QspiBus` — signal bundle |
-| `cocotbext/qspi/qspi_config.py` | `QspiConfig` — width, polarity, lane count |
-| `verilog/qspi_flash.v` | QSPI flash slave model |
-| `verilog/qspi_flash_test.v` | cocotb top level with the tri-state split |
+| `verilog/qspi_flash.v` | NOR flash model: WEL, WIP, page program, sector erase |
+| `verilog/qspi_flash_test.v` | cocotb top level |
+| `tests/reference/` | third-party model for interop (ISC, see its README) |
 
-## Running the tests
+## Licence
 
-```
-pip install cocotb pytest
-make -C tests
-```
-
-```
-** TESTS=6 PASS=6 FAIL=0 SKIP=0 **
-```
+MIT. `tests/reference/spiflash.v` is ISC, © Claire Xenia Wolf.
