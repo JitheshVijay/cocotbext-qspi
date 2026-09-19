@@ -1,5 +1,6 @@
 # cocotb / Icarus Verilog simulation artifacts
 sim_build/
+sim_build_interop/
 results.xml
 iverilog_dump.v
 *.vcd

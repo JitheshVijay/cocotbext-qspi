@@ -8,6 +8,11 @@ SIM ?= icarus
 COCOTB_HDL_TIMEUNIT = 1ns
 COCOTB_HDL_TIMEPRECISION = 1ps
 
+# Its own build directory: the device suite's Makefile builds a different
+# top level into sim_build/, and sharing one would make whichever ran
+# first win -- exactly what CI does when it runs both.
+SIM_BUILD = sim_build_interop
+
 TOPLEVEL = tb_spiflash
 MODULE   = test_interop
 
@@ -25,10 +30,12 @@ export COCOTB_HDL_TIMEPRECISION
 
 include $(shell cocotb-config --makefiles)/Makefile.sim
 
-# The model $readmemh's "firmware.hex" from the working directory.
-sim: firmware.hex
+# spiflash.v reads "firmware.hex" from the working directory. Hang the copy
+# off results.xml as well as sim: Makefile.sim's default goal is results.xml,
+# so a prerequisite on sim alone never fires.
+sim results.xml: firmware.hex
 firmware.hex: reference/firmware.hex
 	cp $< $@
 
 clean::
-	@rm -rf sim_build results.xml firmware.hex
+	@rm -rf sim_build_interop results.xml firmware.hex
