@@ -1,5 +1,11 @@
 # cocotbext-qspi
 
+[![CI](https://github.com/JitheshVijay/cocotbext-qspi/actions/workflows/ci.yml/badge.svg)](https://github.com/JitheshVijay/cocotbext-qspi/actions/workflows/ci.yml)
+[![PyPI](https://img.shields.io/pypi/v/cocotbext-qspi.svg)](https://pypi.org/project/cocotbext-qspi/)
+[![Python versions](https://img.shields.io/pypi/pyversions/cocotbext-qspi.svg)](https://pypi.org/project/cocotbext-qspi/)
+[![Downloads](https://img.shields.io/pypi/dm/cocotbext-qspi.svg)](https://pypi.org/project/cocotbext-qspi/)
+[![License](https://img.shields.io/pypi/l/cocotbext-qspi.svg)](https://github.com/JitheshVijay/cocotbext-qspi/blob/main/LICENSE)
+
 QSPI flash verification for [cocotb](https://www.cocotb.org/): a bus driver,
 a device-level API over the JEDEC command set, and a NOR flash model to test
 against.
