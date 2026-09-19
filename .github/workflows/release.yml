@@ -1,20 +1,35 @@
 name: Release
 
-# Publishes to PyPI when a version tag is pushed.
+# Two stages, so a first release can be rehearsed before it is permanent.
 #
-# Uses PyPI Trusted Publishing (OIDC), so there is no API token to store or
-# leak: PyPI is configured to trust this repository and workflow, and the
-# short-lived credential is minted per run.
+#   push a tag   ->  builds, checks, publishes to TestPyPI
+#   publish a
+#   GitHub Release for that tag  ->  publishes to the real PyPI
 #
-# Before the first release, add a trusted publisher on PyPI:
-#   owner       JitheshVijay
-#   repository  <this repo>
-#   workflow    release.yml
-#   environment pypi
+# Pushing the tag is therefore safe: it cannot reach pypi.org on its own.
+# Look at the TestPyPI page first, install from it, and only then create the
+# Release. A version number on either index can never be reused, which is
+# why the real one waits for a deliberate second action.
+#
+# Both stages use PyPI Trusted Publishing (OIDC): no API token exists, and
+# nothing is stored in this repository. Register a publisher on each index
+# before the first run --
+#
+#   https://pypi.org/manage/account/publishing/
+#   https://test.pypi.org/manage/account/publishing/
+#
+#     PyPI project name   cocotbext-qspi
+#     Owner               JitheshVijay
+#     Repository name     cocotbext-qspi
+#     Workflow name       release.yml
+#     Environment name    pypi        (on pypi.org)
+#                         testpypi    (on test.pypi.org)
 
 on:
   push:
     tags: ['v*']
+  release:
+    types: [published]
 
 jobs:
   build:
@@ -36,6 +51,8 @@ jobs:
       - name: Check metadata
         run: python -m twine check dist/*
 
+      # Both of the gates below exist because the mistake was actually made
+      # and caught by hand before the first release.
       - name: Check the Verilog shipped
         run: |
           set -e
@@ -48,9 +65,6 @@ jobs:
             fi
           done
 
-
-      # README images must be absolute: relative paths 404 on PyPI, which is
-      # the first thing anyone sees. Caught once already.
       - name: Check README images are absolute
         run: |
           python -m pip install "readme_renderer[md]"
@@ -62,6 +76,7 @@ jobs:
                  if not s.startswith("https://")]
           if bad:
               print("relative README image(s):", *bad, sep="\n  ")
+              print("they resolve against pypi.org and 404")
               sys.exit(1)
           print("all README images absolute")
           EOF
@@ -71,12 +86,32 @@ jobs:
           name: dist
           path: dist/
 
-  publish:
+  # Rehearsal. Reached by pushing a tag.
+  testpypi:
+    if: github.event_name == 'push'
+    needs: build
+    runs-on: ubuntu-latest
+    environment: testpypi
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+      - uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: https://test.pypi.org/legacy/
+
+  # The real thing. Reached by publishing a GitHub Release for the tag.
+  pypi:
+    if: github.event_name == 'release'
     needs: build
     runs-on: ubuntu-latest
     environment: pypi
     permissions:
-      id-token: write        # required for trusted publishing
+      id-token: write
     steps:
       - uses: actions/download-artifact@v4
         with:

@@ -26,3 +26,19 @@ right.
 Earlier revisions of this code existed but were never usable: the RTL,
 driver and tests disagreed with each other and nothing had run. 0.2.0 is the
 first version that works.
+
+
+## Releasing
+
+Two stages, so a release can be rehearsed before it is permanent:
+
+1. `git tag v0.2.0 && git push --tags` — builds, runs the gates, publishes
+   to [TestPyPI](https://test.pypi.org). Nothing reaches the real index.
+2. Check the TestPyPI page renders and the package installs from it.
+3. Create a GitHub Release for that tag — publishes to PyPI.
+
+Both stages authenticate with Trusted Publishing, so no API token exists.
+Register a publisher on each index first; the workflow header lists the
+exact fields.
+
+A version number can never be reused on either index.
