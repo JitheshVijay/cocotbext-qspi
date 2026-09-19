@@ -8,7 +8,7 @@ version = "0.2.0"
 description = "QSPI flash verification for cocotb, with a JEDEC flash model"
 readme = "README.md"
 license = {text = "MIT"}
-requires-python = ">=3.8"
+requires-python = ">=3.9"
 authors = [{name = "Jithesh Vijay", email = "jitheshvijay67@gmail.com"}]
 keywords = ["cocotb", "qspi", "spi", "flash", "verification", "hdl", "rtl"]
 dependencies = ["cocotb>=2.0"]
@@ -19,6 +19,11 @@ classifiers = [
     "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Topic :: Software Development :: Testing",
 ]
 
