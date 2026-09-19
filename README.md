@@ -98,6 +98,12 @@ make -C docs/waveforms svg    # capture.vcd -> *.svg
 | `0xEB` | Fast read quad I/O | 4 lanes | 4 lanes, after mode byte + dummy |
 | `0x02` | Page program | 1 lane | 1 lane; needs WEL, sets WIP |
 | `0x20` | Sector erase (4 KB) | 1 lane | — ; needs WEL, sets WIP |
+| `0x66` / `0x99` | Reset enable / reset | — | — |
+
+`RSTEN` arms a reset for the **next** command only; anything in between
+cancels it, so a stray `0x99` cannot reset a device mid-operation.
+`initialize()` issues the pair, so a test cannot inherit the write enable
+latch from whatever ran before it.
 
 Status register: bit 0 `WIP` (write in progress), bit 1 `WEL` (write enable
 latch). `wait_ready()` polls it rather than assuming a fixed delay, which is

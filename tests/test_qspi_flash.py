@@ -151,3 +151,43 @@ async def test_reads_auto_increment(dut):
     payload = [0xDE, 0xAD, 0xBE, 0xEF]
     await flash.program(0x000060, payload)
     assert await flash.read(0x000060, 4) == payload
+
+
+@cocotb.test()
+async def test_software_reset_clears_the_write_enable_latch(dut):
+    """RSTEN then RST drops WEL, so a test cannot inherit an armed device."""
+    flash = await setup(dut)
+
+    await flash.write_enable()
+    assert await flash.read_status() & STATUS_WEL
+
+    await flash.reset()
+    assert not await flash.read_status() & STATUS_WEL
+
+
+@cocotb.test()
+async def test_reset_needs_reset_enable_first(dut):
+    """RST on its own does nothing; RSTEN has to immediately precede it.
+
+    A command in between cancels the arming, which is what the real
+    sequence requires and why it exists -- a stray 0x99 should not reset a
+    device mid-operation.
+    """
+    flash = await setup(dut)
+    await flash.write_enable()
+    assert await flash.read_status() & STATUS_WEL
+
+    # RST alone, with no RSTEN: ignored.
+    await flash._command(0x99)
+    assert await flash.read_status() & STATUS_WEL, "bare RST reset the device"
+
+    # RSTEN, then something else, then RST: the arming is cancelled.
+    await flash._command(0x66)
+    await flash.read_status()
+    await flash._command(0x99)
+    assert await flash.read_status() & STATUS_WEL, \
+        "RST honoured despite an intervening command"
+
+    # The proper pair works.
+    await flash.reset()
+    assert not await flash.read_status() & STATUS_WEL

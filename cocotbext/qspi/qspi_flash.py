@@ -18,6 +18,8 @@ CMD_QIOR2 = 0xBB  # fast read dual I/O
 CMD_QIOR4 = 0xEB  # fast read quad I/O
 CMD_PP = 0x02     # page program
 CMD_SE = 0x20     # sector erase
+CMD_RSTEN = 0x66  # reset enable
+CMD_RST = 0x99    # reset memory
 
 STATUS_WIP = 0x01  # write in progress
 STATUS_WEL = 0x02  # write enable latch
@@ -60,7 +62,18 @@ class QspiFlash:
         await RisingEdge(self.bus.clk)
         self.bus.cs.value = 1
         await RisingEdge(self.bus.clk)
+        await self.reset()
         await self.release_power_down()
+
+    async def reset(self):
+        """Software-reset the device: RSTEN then RST.
+
+        Without this a test inherits whatever state the previous one left --
+        the write enable latch in particular. Nothing depends on it today,
+        but only because the tests happen to use separate addresses.
+        """
+        await self._command(CMD_RSTEN)
+        await self._command(CMD_RST)
 
     # ── simple commands ──────────────────────────────────────────────
 

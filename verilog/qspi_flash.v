@@ -50,7 +50,9 @@ module qspi_flash #(
                      CMD_QIOR2 = 8'hBB,
                      CMD_QIOR4 = 8'hEB,
                      CMD_PP    = 8'h02,
-                     CMD_SE    = 8'h20;
+                     CMD_SE    = 8'h20,
+                     CMD_RSTEN = 8'h66,
+                     CMD_RST   = 8'h99;
 
     reg [7:0]  memory [0:MEM_DEPTH-1];
 
@@ -66,6 +68,8 @@ module qspi_flash #(
     reg [3:0]  dout;
 
     reg        wel;         // write enable latch
+    reg        rst_enabled; // RSTEN must immediately precede RST
+    reg        was_rst_enabled;
     reg        wip;         // write in progress
     reg        powered_up;
 
@@ -87,6 +91,8 @@ module qspi_flash #(
         addr       = 0;
         wel        = 0;
         wip        = 0;
+        rst_enabled = 0;
+        was_rst_enabled = 0;
         powered_up = 1;   // start usable; 0xB9/0xAB still work
         pp_count   = 0;
     end
@@ -104,9 +110,15 @@ module qspi_flash #(
         begin
             if (bytecount == 1) begin
                 cmd = buffer;
+                // RSTEN arms a reset for the *next* command only. Any other
+                // command clears the arming, so a stray RST cannot reset a
+                // device mid-operation.
+                was_rst_enabled = rst_enabled;
+                rst_enabled = (cmd == CMD_RSTEN);
                 case (cmd)
                     CMD_WREN: if (!wip) wel = 1'b1;
                     CMD_WRDI: wel = 1'b0;
+                    CMD_RST: if (was_rst_enabled) wel = 1'b0;
                     CMD_RDP:  powered_up = 1'b1;
                     CMD_DP:   powered_up = 1'b0;
                     CMD_QIOR2: lanes = 2;   // widens straight after the opcode
@@ -206,7 +218,15 @@ module qspi_flash #(
     end
 
     // ── device drives while the clock is low ─────────────────────────
-    always @(csb, clk) begin
+    //
+    // Combinational rather than sensitive to clk and csb alone. Today this
+    // model is single transfer rate, so state changes on a rising edge and
+    // this re-evaluates on the following falling one -- there is always an
+    // edge in between. That gap disappears in DTR, where the device must
+    // drive on both edges, and the first byte would read as released. The
+    // octal models hit exactly that; fixing it here keeps the bug from
+    // reappearing if this one ever gains a DTR mode.
+    always @(*) begin
         if (!csb && !clk && dummycount == 0) begin
             case (cmd)
                 CMD_RDSR, CMD_RDID: if (bytecount >= 1) begin
