@@ -1,3 +1,20 @@
+"""QSPI flash verification for cocotb."""
+
+from pathlib import Path
+
+
+def verilog_dir() -> Path:
+    """Directory holding this package's Verilog models.
+
+    The models ship inside the package, so a testbench can point at them
+    without vendoring a copy:
+
+        VERILOG_SOURCES += $(shell python -c \
+            "import cocotbext.qspi as q; print(q.verilog_dir())")/qspi_flash.v
+    """
+    return Path(__file__).parent / "verilog"
+
+
 from .qspi_bus import QspiBus
 from .qspi_config import QspiConfig
 from .qspi_flash import (

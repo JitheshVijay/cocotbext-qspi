@@ -33,3 +33,9 @@ Issues = "https://github.com/JitheshVijay/cocotbext-qspi/issues"
 [tool.setuptools.packages.find]
 include = ["cocotbext.*"]
 namespaces = true
+
+# The Verilog models ship with the package. Without this they are simply
+# absent from the wheel, and a pip-installed copy has a driver but nothing
+# to drive -- which is most of the point of the package.
+[tool.setuptools.package-data]
+"cocotbext.qspi" = ["verilog/*.v", "verilog/*.vh"]

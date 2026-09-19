@@ -17,6 +17,21 @@ single-lane SPI. This one covers flash specifically: dual and quad I/O
 reads, the write-enable latch, status polling, page program and sector
 erase — and it targets cocotb 2.x.
 
+## Pointing a testbench at the models
+
+The Verilog ships inside the package, so there is nothing to vendor. Ask the
+package where it is:
+
+```make
+VERILOG_DIR := $(shell python3 -c \
+    "import cocotbext.qspi as q; print(q.verilog_dir())")
+
+VERILOG_SOURCES  = $(VERILOG_DIR)/qspi_flash.v
+VERILOG_SOURCES += $(VERILOG_DIR)/qspi_flash_test.v
+```
+
+Or from Python, `cocotbext.qspi.verilog_dir()` returns a `pathlib.Path`.
+
 ## Usage
 
 ```python

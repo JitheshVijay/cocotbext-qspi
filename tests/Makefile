@@ -1,6 +1,14 @@
 # Makefile for running Cocotb tests with Icarus Verilog
 
 # Language and simulator settings
+# The models live inside the installed package, so tests use the same
+# copy a user would get from pip rather than a repo-relative path.
+VERILOG_DIR := $(shell PYTHONPATH=$(shell pwd)/.. python3 -c \
+    "import cocotbext.qspi as q; print(q.verilog_dir())" 2>/dev/null)
+ifeq ($(VERILOG_DIR),)
+VERILOG_DIR := $(shell pwd)/../cocotbext/qspi/verilog
+endif
+
 TOPLEVEL_LANG ?= verilog
 SIM ?= icarus
 WAVES ?= 1
@@ -15,8 +23,8 @@ TOPLEVEL = qspi_flash_test
 MODULE   = test_qspi_flash
 
 # Verilog source files
-VERILOG_SOURCES = $(shell pwd)/../verilog/qspi_flash.v
-VERILOG_SOURCES += $(shell pwd)/../verilog/qspi_flash_test.v
+VERILOG_SOURCES = $(VERILOG_DIR)/qspi_flash.v
+VERILOG_SOURCES += $(VERILOG_DIR)/qspi_flash_test.v
 
 # Enable waveform dumping
 ifeq ($(SIM), icarus)
